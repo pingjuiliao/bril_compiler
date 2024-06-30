@@ -1,0 +1,11 @@
+# cpython
+**/__pycache__
+
+# virtual environment
+.venv
+
+# tmporary json file
+**/tmp.json
+
+# egginfo
+*.egg-info
