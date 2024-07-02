@@ -21,7 +21,9 @@ class JSonToBrilParser(BrilParser):
         self._num_file_parsed = 0
         self.BINARY_ARITHMETIC_CONSTRUCTOR_MAP = {
             "add": ir.AddInstruction,
+            "sub": ir.SubtractInstruction,
             "mul": ir.MultiplyInstruction,
+            "div": ir.DivideInstruction,
         }
         self.UNARY_OPERATOR_CONSTRUCTOR_MAP = {
             "id": ir.IdInstruction,

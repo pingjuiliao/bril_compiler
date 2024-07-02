@@ -7,7 +7,13 @@ class Instruction(object):
     def get_type(self):
         return self._bril_type
 
+    def get_destination(self):
+        raise NotImplementedError
+
     def get_value(self):
+        raise NotImplementedError
+
+    def get_arguments(self):
         raise NotImplementedError
 
     def is_label(self):
@@ -16,11 +22,18 @@ class Instruction(object):
     def is_terminator(self):
         return False
 
+
 class UnaryInstruction(Instruction):
     def __init__(self, operand, destination=None, dest_type=None):
         self._destination = destination
         self._operand = operand
         self._dest_type = dest_type
+
+    def get_destination(self):
+        return self._destination
+
+    def get_arguments(self):
+        return [self._operand]
 
     def dump_json(self):
         data = {}
@@ -38,6 +51,12 @@ class BinaryInstruction(Instruction):
         self._operand0 = operand0
         self._operand1 = operand1
         self._dest_type = dest_type
+
+    def get_destination(self):
+        return self._destination
+
+    def get_arguments(self):
+        return [self._operand0, self._operand1]
 
     def dump_json(self):
         data = {}
@@ -80,9 +99,8 @@ class PrintInstruction(UnaryInstruction):
         return None
 
     def dump_json(self):
-        data = {}
+        data = super().dump_json()
         data["op"] = "print"
-        data["labels"] = [self._operand]
         return data
 
 
@@ -126,6 +144,16 @@ class AddInstruction(BinaryInstruction):
         return data
 
 
+class SubtractInstruction(BinaryInstruction):
+    def get_value(self):
+        return self._operand0 - self._operand1;
+
+    def dump_json(self):
+        data = super().dump_json()
+        data["op"] = "sub"
+        return data
+
+
 class MultiplyInstruction(BinaryInstruction):
     def get_value(self):
         return self._operand0 * self._operand1
@@ -133,4 +161,13 @@ class MultiplyInstruction(BinaryInstruction):
     def dump_json(self):
         data = super().dump_json()
         data["op"] = "mul"
+        return data
+
+
+class DivideInstruction(BinaryInstruction):
+    def get_value(self):
+        return self._operand0 // self._operand1;
+
+    def dump_json(self):
+        data["op"] = "div"
         return data

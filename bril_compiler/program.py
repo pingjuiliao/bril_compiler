@@ -17,6 +17,15 @@ class BasicBlock(object):
     def get_instructions(self):
         return self._instructions
 
+    def clear_instructions(self):
+        """Instruction deletion"""
+        self._instructions = []
+
+    def transform_into(self, instructions):
+        """a update all instructions"""
+        self._instructions = instructions
+
+
     def add_instruction(self, instruction):
         self._instructions.append(instruction)
 
@@ -42,6 +51,9 @@ class Function(object):
 class Module(object):
     def __init__(self):
         self._functions = []
+
+    def get_functions(self):
+        return self._functions
 
     def add_function(self, function):
         self._functions.append(function)
