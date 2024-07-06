@@ -120,9 +120,18 @@ class LabelInstruction(Instruction):
         return data
 
 
-class JmpInstruction(UnaryInstruction):
+class JumpInstruction(Instruction):
+    def __init__(self, label):
+        self._label = label
+
     def get_value(self):
         return None
+
+    def get_destination(self):
+        return None
+
+    def get_arguments(self):
+        return []
 
     def is_terminator(self):
         return True
@@ -130,7 +139,34 @@ class JmpInstruction(UnaryInstruction):
     def dump_json(self):
         data = {}
         data["op"] = "jmp"
-        data["labels"] = [self._operand]
+        data["labels"] = [self._label]
+        return data
+
+
+class BranchInstruction(Instruction):
+    def __init__(self, condition, label_on_true, label_on_false):
+        self._condition = condition
+        self._label_on_true = label_on_true
+        self._label_on_false = label_on_false
+
+    def get_value(self):
+        return None
+
+    def get_destination(self):
+        return None
+
+    def get_arguments(self):
+        return [self._condition]
+
+    def is_termiator(self):
+        return True
+
+    def dump_json(self):
+        data = {}
+        data["op"] = "br"
+        data["labels"] = [self._label_on_true,
+                          self._label_on_false]
+        data["args"] = [self._condition]
         return data
 
 

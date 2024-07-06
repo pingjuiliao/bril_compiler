@@ -84,13 +84,25 @@ class JSonToBrilParser(BrilParser):
         return json.load(fp)
 
     def _json_to_instruction(self, instr_json):
-        operator = instr_json["op"]
-        if operator == "label":
+        """Transform json object into labels"""
+
+        # label is the most speical one without operator
+        if "label" in instr_json:
             return ir.LabelInstruction(instr_json["label"])
-        elif operator == "const":
+
+        # for the rest of instructions, we can guarantee that
+        # they possess the "op" property
+        operator = instr_json["op"]
+        if operator == "const":
             return ir.ConstInstruction(instr_json["value"],
                                        instr_json["dest"],
                                        instr_json["type"])
+        elif operator == "jmp":
+            return ir.JumpInstruction(instr_json["labels"][0])
+        elif operator == "br":
+            return ir.BranchInstruction(instr_json["args"][0],
+                                        instr_json["labels"][0],
+                                        instr_json["labels"][1])
         elif operator in self.UNARY_OPERATOR_CONSTRUCTOR_MAP:
             if "dest" not in instr_json:
                 instr_json["dest"] = None
@@ -108,7 +120,7 @@ class JSonToBrilParser(BrilParser):
                 instr_json["type"]
             )
         else:
-            print(f"instr_json.op == {instr_json.op}")
+            print(f"instr_json.op == {instr_json}")
             raise NotImplementedError
 
 if __name__ == "__main__":
