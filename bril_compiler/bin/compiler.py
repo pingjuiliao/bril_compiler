@@ -8,10 +8,10 @@ import sys
 from bril_compiler import parser
 from bril_compiler import program
 from bril_compiler.optimization import compiler_pass
-from bril_compiler.optimization import tdce
 
 pass_map = {
-    "tdce": "bril_compiler.optimization.tdce.TrivilDeadCodeEliminationPass",
+    "tdce": "bril_compiler.optimization.redundancy.tdce.TrivilDeadCodeEliminationPass",
+    "lvn": "bril_compiler.optimization.redundancy.lvn.LocalValueNumberingCompositePass",
 }
 
 def dynamic_import(pass_name):

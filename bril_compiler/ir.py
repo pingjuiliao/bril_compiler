@@ -5,7 +5,10 @@ class Instruction(object):
         raise NotImplementedError
 
     def get_type(self):
-        return self._bril_type
+        raise NotImplementedError
+
+    def get_operator_string(self):
+        raise NotImplementedError
 
     def get_destination(self):
         raise NotImplementedError
@@ -35,6 +38,9 @@ class UnaryInstruction(Instruction):
     def get_arguments(self):
         return [self._operand]
 
+    def get_type(self):
+        return self._dest_type
+
     def dump_json(self):
         data = {}
         if self._destination is not None:
@@ -58,6 +64,9 @@ class BinaryInstruction(Instruction):
     def get_arguments(self):
         return [self._operand0, self._operand1]
 
+    def get_type(self):
+        return self._dest_type
+
     def dump_json(self):
         data = {}
         if self._destination is not None:
@@ -71,13 +80,16 @@ class ConstInstruction(UnaryInstruction):
     def get_value(self):
         return self._value
 
+    def get_operator_string(self):
+        return "const"
+
     def dump_json(self):
         """
         Though Const is an unary operation, the json representation is
         quite different.
         """
         data = {}
-        data["op"] = "const"
+        data["op"] = self.get_operator_string()
         data["value"] = self._operand
         data["dest"] = self._destination
         data["type"] = self._dest_type
@@ -88,9 +100,12 @@ class IdInstruction(UnaryInstruction):
     def get_value(self):
         return self._reference
 
+    def get_operator_string(self):
+        return "id"
+
     def dump_json(self):
         data = super().dump_json()
-        data["op"] = "id"
+        data["op"] = self.get_operator_string()
         return data
 
 
@@ -98,9 +113,12 @@ class PrintInstruction(UnaryInstruction):
     def get_value(self):
         return None
 
+    def get_operator_string(self):
+        return "print"
+
     def dump_json(self):
         data = super().dump_json()
-        data["op"] = "print"
+        data["op"] = self.get_operator_string()
         return data
 
 
@@ -110,6 +128,13 @@ class LabelInstruction(Instruction):
 
     def is_label(self):
         return True
+
+    def get_type(self):
+        return None
+
+    def get_operator_string(self):
+        print("[WARNING] label instruciton does not have instruction")
+        return None
 
     def get_value(self):
         return None
@@ -130,15 +155,21 @@ class JumpInstruction(Instruction):
     def get_destination(self):
         return None
 
+    def get_operator_string(self):
+        return "jmp"
+
     def get_arguments(self):
         return []
+
+    def get_type(self):
+        return None
 
     def is_terminator(self):
         return True
 
     def dump_json(self):
         data = {}
-        data["op"] = "jmp"
+        data["op"] = self.get_operator_string()
         data["labels"] = [self._label]
         return data
 
@@ -152,18 +183,24 @@ class BranchInstruction(Instruction):
     def get_value(self):
         return None
 
+    def get_operator_string(self):
+        return "br"
+
     def get_destination(self):
         return None
 
     def get_arguments(self):
         return [self._condition]
 
+    def get_type(self):
+        return None
+
     def is_termiator(self):
         return True
 
     def dump_json(self):
         data = {}
-        data["op"] = "br"
+        data["op"] = self.get_operator_string()
         data["labels"] = [self._label_on_true,
                           self._label_on_false]
         data["args"] = [self._condition]
@@ -174,9 +211,12 @@ class AddInstruction(BinaryInstruction):
     def get_value(self):
         return self._operand0 + self._operand1
 
+    def get_operator_string(self):
+        return "add"
+
     def dump_json(self):
         data = super().dump_json()
-        data["op"] = "add"
+        data["op"] = self.get_operator_string()
         return data
 
 
@@ -184,9 +224,12 @@ class SubtractInstruction(BinaryInstruction):
     def get_value(self):
         return self._operand0 - self._operand1;
 
+    def get_operator_string(self):
+        return "sub"
+
     def dump_json(self):
         data = super().dump_json()
-        data["op"] = "sub"
+        data["op"] = self.get_operator_string()
         return data
 
 
@@ -194,9 +237,12 @@ class MultiplyInstruction(BinaryInstruction):
     def get_value(self):
         return self._operand0 * self._operand1
 
+    def get_operator_string(self):
+        return "mul"
+
     def dump_json(self):
         data = super().dump_json()
-        data["op"] = "mul"
+        data["op"] = self.get_operator_string()
         return data
 
 
@@ -205,5 +251,6 @@ class DivideInstruction(BinaryInstruction):
         return self._operand0 // self._operand1;
 
     def dump_json(self):
-        data["op"] = "div"
+        data = super().dump_json()
+        data["op"] = self.get_operator_string()
         return data
