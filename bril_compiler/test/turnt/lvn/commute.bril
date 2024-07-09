@@ -1,4 +1,4 @@
-# ARGS: -c
+# ARGS: -p lvn
 # (a + b) * (b + a)
 @main {
   a: int = const 4;

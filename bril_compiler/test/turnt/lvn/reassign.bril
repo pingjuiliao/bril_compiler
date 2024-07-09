@@ -1,3 +1,4 @@
+# ARGS: -p lvn-only
 @main {
   a: int = const 100;
   a: int = const 42;

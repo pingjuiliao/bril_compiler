@@ -8,16 +8,24 @@ class IRBuilder:
     """
     def __init__(self):
         self.num_built = 0
-        self.BINARY_ARITHMETIC_CONSTRUCTOR_MAP = {
+        self.BINARY_CONSTRUCTOR_MAP = {
             "add": ir.AddInstruction,
             "sub": ir.SubtractInstruction,
             "mul": ir.MultiplyInstruction,
-            "div": ir.DivideInstruction
+            "div": ir.DivideInstruction,
+            "eq": ir.EqualInstruction,
+            "lt": ir.LessThanInstruction,
+            "le": ir.LessThanOrEqualToInstruction,
+            "gt": ir.GreaterThanInstruction,
+            "ge": ir.GreaterThanOrEqualToInstruction,
+            "and": ir.AndInstruction,
+            "or": ir.OrInstruction
         }
         self.UNARY_OPERATOR_CONSTRUCTOR_MAP = {
             "id": ir.IdInstruction,
             "print": ir.PrintInstruction,
             "const": ir.ConstInstruction,
+            "not": ir.NotInstruction,
         }
 
     def build_by_name(self, operator, destination=None, uses=[],
@@ -37,8 +45,8 @@ class IRBuilder:
                 destination,
                 dest_type
             )
-        elif operator in self.BINARY_ARITHMETIC_CONSTRUCTOR_MAP:
-            return self.BINARY_ARITHMETIC_CONSTRUCTOR_MAP[operator](
+        elif operator in self.BINARY_CONSTRUCTOR_MAP:
+            return self.BINARY_CONSTRUCTOR_MAP[operator](
                 uses[0],
                 uses[1],
                 destination,

@@ -1,4 +1,4 @@
-# ARGS: -p
+# ARGS: -p lvn
 @main {
   x: int = const 4;
   jmp .label;

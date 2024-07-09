@@ -12,6 +12,7 @@ from bril_compiler.optimization import compiler_pass
 pass_map = {
     "tdce": "bril_compiler.optimization.redundancy.tdce.TrivilDeadCodeEliminationPass",
     "lvn": "bril_compiler.optimization.redundancy.lvn.LocalValueNumberingCompositePass",
+    "lvn-only": "bril_compiler.optimization.redundancy.lvn.LocalValueNumberingPass"
 }
 
 def dynamic_import(pass_name):

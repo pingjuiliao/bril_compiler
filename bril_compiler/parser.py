@@ -24,10 +24,18 @@ class JSonToBrilParser(BrilParser):
             "sub": ir.SubtractInstruction,
             "mul": ir.MultiplyInstruction,
             "div": ir.DivideInstruction,
+            "eq": ir.EqualInstruction,
+            "gt": ir.GreaterThanInstruction,
+            "ge": ir.GreaterThanOrEqualToInstruction,
+            "lt": ir.LessThanInstruction,
+            "le": ir.LessThanOrEqualToInstruction,
+            "and": ir.AndInstruction,
+            "or": ir.OrInstruction
         }
         self.UNARY_OPERATOR_CONSTRUCTOR_MAP = {
             "id": ir.IdInstruction,
             "print": ir.PrintInstruction,
+            "not": ir.NotInstruction
         }
 
 
