@@ -98,6 +98,10 @@ class ValueNumberingLocalAgent:
         if entry is None:
             print(f"weird encoding: {encoding.identity}")
             quit()
+
+        if entry.value[0] == "id":
+            return self._build_instruction_literal(entry, encoding)
+
         return self._ir_builder.build_by_name(
             "id",
             uses=[entry.variable],
@@ -105,6 +109,21 @@ class ValueNumberingLocalAgent:
             dest_type=encoding.var_type
         )
 
-
-
-
+    def _build_instruction_literal(self, entry, encoding):
+        if entry.value[0] == "const":
+            uses = [entry.value[1]]
+        else:
+            uses = []
+            for use in entry.value[1:]:
+                if isinstance(use, str):
+                    uses.append(use)
+                else:
+                    use_entry = (self._lvntable.
+                        get_entry_by_number(use))
+                    uses.append(uss_entry.variable)
+        return self._ir_builder.build_by_name(
+            entry.value[0],
+            uses=uses,
+            destination=encoding.identity,
+            dest_type=encoding.var_type
+        )

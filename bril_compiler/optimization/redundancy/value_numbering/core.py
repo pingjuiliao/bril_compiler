@@ -16,11 +16,18 @@ class ValueNumberingTableEntry:
 
 class ValueNumberingTable:
     def __init__(self):
+        """The data structure for the table defined as
+        the three mapping to the entries
+            - _entrires: mapping from number to entries
+            - _value_to_entry: mapping from values to entries
+            - _variable_to_entry: variable (canonical home to entry)
+        """
         self._entries = []
         self._value_to_entry = {}
         self._variable_to_entry = {}
-        self._irbuilder = ir_builder.IRBuilder()
-        self._used_for_reform = set()
+
+        # teach ID instruction to perform propagation
+        self.id_map = {}
 
     def add_entry(self, instruction):
         """Value Numbering table only allows addition to the table
@@ -50,7 +57,6 @@ class ValueNumberingTable:
         if value is None:
             return None
 
-
         # reused variable name
         conflict_entry = self.get_entry_by_variable(variable)
         if conflict_entry is not None and conflict_entry.value != value:
@@ -60,7 +66,13 @@ class ValueNumberingTable:
             self._variable_to_entry[variable] = None
             self._variable_to_entry[conflict_entry.variable] = conflict_entry
 
-        # same value
+        # copy propagation
+        if value[0] == "id":
+            refer_entry = self.get_entry_by_number(value[1])
+            if refer_entry is not None and refer_entry.value[0] == "id":
+                value = ("id", refer_entry.value[1])
+
+        # same value, do not update the table
         if value in self._value_to_entry:
             self._variable_to_entry[variable] = (
                 self._value_to_entry[value]
@@ -125,92 +137,11 @@ class ValueNumberingTable:
     def variable_is_in_table(self, variable):
         return self.get_entry_by_variable(variable) != None
 
-    def reform(self, instruction):
-        """Query the table and reform instruction.
-            Note that we must re-encode the value again to match,
-            since the variable name could have been changed due to
-            reassignment of the same variable
-        """
-        if self._should_ignore(instruction):
-            return None
-        value = self._encode_to_value(instruction)
-        if value is None:
-            return None
-
-        entry = self.get_entry_by_value(value)
-        if entry is None:
-            return None
-
-        # if it's a reuse of an value,
-        if value in self._used_for_reform:
-            return self._irbuilder.build_by_name(
-                "id",
-                uses=[entry.variable],
-                destination=instruction.get_destination(),
-                dest_type=instruction.get_type()
-            )
-        self._used_for_reform.add(value)
-
-        # Now, we are safe to build new instruction
-        operator = entry.value[0]
-        uses = []
-        # const instruction directly uses its value
-        if operator == "const":
-            uses.append(entry.value[1])
-        else:
-            for i in range(1, len(entry.value)):
-                use_number = entry.value[i]
-                # if it's a string, definition outside the local context
-                if isinstance(use_number, str):
-                    uses.append(entry.value[i])
-                    continue
-                use_entry = self.get_entry_by_number(use_number)
-                if use_entry is None:
-                    print("Error in constructing the table")
-                    quit()
-                uses.append(use_entry.variable)
-
-        #print(operator, uses)
-        return self._irbuilder.build_by_name(
-            operator,
-            uses=uses,
-            destination=entry.variable,
-            dest_type=instruction.get_type()
-        )
-
     def _should_ignore(self, instruction):
         return instruction.get_operator_string() in ["jmp", "br"]
 
     def variable_in_table(self, variable):
         return variable in self._variable_to_entry
-
-    def reform_instruction(self, variable_name, variable_type):
-        """Query the table and """
-
-        entry = self.get_entry_by_variable(variable_name)
-        if entry.variable != variable_name:
-            return self._irbuilder.build_by_name(
-                "id",
-                uses=[entry.variable],
-                destination=variable_name,
-            )
-
-        operator = entry.value[0]
-        if operator == "const":
-            uses = [entry.value[1]]
-        else:
-            uses = []
-            for i in range(1, len(entry.value)):
-                use_number = entry.value[i]
-                use_entry = self._entries[use_number]
-                uses.append(use_entry.variable)
-
-        return self._irbuilder.build_by_name(
-            operator,
-            uses=uses,
-            destination=variable_name,
-            dest_type=variable_type
-        )
 
     def show_table(self):
         print("|  #  |   Value    | Variable")
