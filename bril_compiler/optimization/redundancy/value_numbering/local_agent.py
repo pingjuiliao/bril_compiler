@@ -74,24 +74,7 @@ class ValueNumberingLocalAgent:
         # first, get entry by number
         entry = self._lvn_table.get_entry_by_number(encoding.identity)
         if entry is not None:
-            if entry.value[0] == "const":
-                uses = [entry.value[1]]
-            else:
-                uses = []
-                for use in entry.value[1:]:
-                    if isinstance(use, str):
-                        uses.append(use)
-                    else:
-                        use_entry = (self._lvn_table.
-                            get_entry_by_number(use))
-                        uses.append(use_entry.variable)
-
-            return self._ir_builder.build_by_name(
-                entry.value[0],
-                uses=uses,
-                destination=entry.variable,
-                dest_type=encoding.var_type
-            )
+            return self._build_first_value_instruction(entry, encoding)
 
         # then, get entry by name
         entry = self._lvn_table.get_entry_by_variable(encoding.identity)
@@ -100,16 +83,10 @@ class ValueNumberingLocalAgent:
             quit()
 
         if entry.value[0] == "id":
-            return self._build_instruction_literal(entry, encoding)
+            return self._build_literal_id_instruction(entry, encoding)
+        return self._build_reference_instruction(entry, encoding)
 
-        return self._ir_builder.build_by_name(
-            "id",
-            uses=[entry.variable],
-            destination=encoding.identity,
-            dest_type=encoding.var_type
-        )
-
-    def _build_instruction_literal(self, entry, encoding):
+    def _build_first_value_instruction(self, entry, encoding):
         if entry.value[0] == "const":
             uses = [entry.value[1]]
         else:
@@ -117,13 +94,44 @@ class ValueNumberingLocalAgent:
             for use in entry.value[1:]:
                 if isinstance(use, str):
                     uses.append(use)
-                else:
-                    use_entry = (self._lvntable.
-                        get_entry_by_number(use))
-                    uses.append(uss_entry.variable)
+                    continue
+
+                use_entry = self._lvn_table.get_entry_by_number(use)
+                if use_entry.value[0] == "id":
+                    if isinstance(use_entry.value[1], str):
+                        uses.append(use_entry.value[1])
+                        continue
+                    else:
+                        use_entry = self._lvn_table.get_entry_by_number(
+                            use_entry.value[1]
+                        )
+                uses.append(use_entry.variable)
+
         return self._ir_builder.build_by_name(
             entry.value[0],
             uses=uses,
+            destination=entry.variable,
+            dest_type=encoding.var_type
+        )
+
+    def _build_literal_id_instruction(self, entry, encoding):
+        uses = []
+        if isinstance(entry.value[1], str):
+            uses = [entry.value[1]]
+        else:
+            use_entry = self._lvn_table.get_entry_by_number(entry.value[1])
+            uses = [use_entry.variable]
+        return self._ir_builder.build_by_name(
+            "id",
+            uses=uses,
+            destination=encoding.identity,
+            dest_type=encoding.var_type
+        )
+
+    def _build_reference_instruction(self, entry, encoding):
+        return self._ir_builder.build_by_name(
+            "id",
+            uses=[entry.variable],
             destination=encoding.identity,
             dest_type=encoding.var_type
         )

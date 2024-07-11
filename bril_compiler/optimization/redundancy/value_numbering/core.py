@@ -129,6 +129,8 @@ class ValueNumberingTable:
         if len(encoded_operands) == 1:
             return (operator, encoded_operands[0])
         elif len(encoded_operands) == 2:
+            # the funciton should modify the "encoded_operands" in-place
+            self._handle_commutativity(operator, encoded_operands)
             return (operator, encoded_operands[0], encoded_operands[1])
 
         print(f"Cannot decode this new type of instruction {instruction}")
@@ -137,9 +139,6 @@ class ValueNumberingTable:
     def variable_is_in_table(self, variable):
         return self.get_entry_by_variable(variable) != None
 
-    def _should_ignore(self, instruction):
-        return instruction.get_operator_string() in ["jmp", "br"]
-
     def variable_in_table(self, variable):
         return variable in self._variable_to_entry
 
@@ -147,3 +146,20 @@ class ValueNumberingTable:
         print("|  #  |   Value    | Variable")
         for i, entry in enumerate(self._entries):
             print(f"| {i} | {entry.value}    | {entry.variable}")
+
+    def _handle_commutativity(self, operator, operands):
+        assert len(operands) == 2
+        if operator not in ["add", "mul", "and", "or"]:
+            return
+
+        # string comes first
+        if isinstance(operands[0], str) and isinstance(operands[1], int):
+            return
+        elif isinstance(operands[1], str) and isinstance(operands[0], int):
+            operands[0], operands[1] = operands[1], operands[0]
+            return
+        elif operands[1] < operands[0]:
+            # handle string comparison and integer comparison
+            operands[0], operands[1] = operands[1], operands[0]
+
+        return
