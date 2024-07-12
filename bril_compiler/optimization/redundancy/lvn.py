@@ -17,33 +17,6 @@ class LocalValueNumberingPass(compiler_pass.BrilPass):
                 # self.lvn_reform(basic_block, lvn_table)
                 # lvn_table.show_table()
 
-    def lvn_reform(self, basic_block, lvn_table):
-        """The algorithm that performs numbering
-            so that dead code eliemiation will eliminate the
-            redundant instrucitons
-        """
-        instructions = basic_block.get_instructions()
-
-        # construct the lvn table
-        for instruction in instructions:
-            # ignore instructions that has no destination
-            destination = instruction.get_destination()
-            if destination is None:
-                continue
-            lvn_table.add_entry(instruction)
-
-        # reform instructions
-        new_instructions = []
-        for instruction in instructions:
-            new_instruction = lvn_table.reform(instruction)
-            if new_instruction is None:
-                new_instruction = instruction
-            new_instructions.append(new_instruction)
-
-        # transform
-        basic_block.transform_into(new_instructions)
-
-
 class LocalValueNumberingCompositePass(compiler_pass.BrilCompositePass):
     def __init__(self):
         super().__init__()

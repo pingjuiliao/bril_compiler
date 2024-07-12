@@ -2,6 +2,7 @@
 
 from bril_compiler import ir
 from bril_compiler import ir_builder
+from bril_compiler.optimization.redundancy.value_numbering import base
 
 class ValueNumberingTableEntry:
     def __init__(self, number, value, variable):
@@ -25,9 +26,7 @@ class ValueNumberingTable:
         self._entries = []
         self._value_to_entry = {}
         self._variable_to_entry = {}
-
-        # teach ID instruction to perform propagation
-        self.id_map = {}
+        self._identifiers = {}
 
     def add_entry(self, instruction):
         """Value Numbering table only allows addition to the table
@@ -39,57 +38,43 @@ class ValueNumberingTable:
             - old value, old variable: slient store
 
         """
-        # basically, we don't need instruction that has no destination.
-        # except PrintInstruction
-        variable = instruction.get_destination()
-        if variable is None:
-            operator = instruction.get_operator_string()
-            if operator in ["br", "jmp"]: # blacklist
-                return None
-            elif operator in ["print"]: # whitelist
-                variable = self.rename_variable(len(self._entries))
-            else:
-                print(f"Unhandled instruction {instruction}")
-                quit()
+        # get variable, the destintation identifier for building entry
+        variable = self._get_variable(instruction)
 
         # We will based on the value the construction table entries
         value = self._encode_to_value(instruction)
         if value is None:
             return None
 
-        # reused variable name
-        conflict_entry = self.get_entry_by_variable(variable)
+        # rename the same variable name if it's previously used
+        conflict_entry = self.get_entry_by_identifier(variable)
         if conflict_entry is not None and conflict_entry.value != value:
             conflict_entry.variable = self.rename_variable(
-                conflict_entry.number
+                conflict_entry.number.get_number()
             )
-            self._variable_to_entry[variable] = None
-            self._variable_to_entry[conflict_entry.variable] = conflict_entry
+            self._identifiers[variable] = None
+            self._identifiers[conflict_entry.variable] = conflict_entry
 
         # copy propagation
-        if value[0] == "id":
-            refer_entry = self.get_entry_by_number(value[1])
-            if refer_entry is not None and refer_entry.value[0] == "id":
-                value = ("id", refer_entry.value[1])
+        value = self.get_referenced_value(value)
 
-        # same value, do not update the table
+        # the value is previously seen, do not update the table
         if value in self._value_to_entry:
-            self._variable_to_entry[variable] = (
-                self._value_to_entry[value]
-            )
+            self._identifiers[variable] = self._value_to_entry[value]
             return None
 
+        number = base.LVNIdentifier(len(self._entries))
         entry = ValueNumberingTableEntry(
-            len(self._entries), value, variable
+            number, value, variable
         )
         self._entries.append(entry)
         self._value_to_entry[entry.value] = entry
         self._variable_to_entry[variable] = entry
+        self._identifiers[number] = entry
+        self._identifiers[variable] = entry
         return entry
 
     def get_entry_by_number(self, number):
-        if not isinstance(number, int):
-            return None
         if number >= len(self._entries):
             return None
         return self._entries[number]
@@ -100,66 +85,90 @@ class ValueNumberingTable:
         return self._value_to_entry[value]
 
     def get_entry_by_variable(self, variable):
-        if not isinstance(variable, str):
+        if not isinstance(variable, base.LVNIdentifier):
             return None
         if variable not in self._variable_to_entry:
             return None
         return self._variable_to_entry[variable]
 
+    def get_entry_by_identifier(self, identifier):
+        if identifier is None:
+            return None
+        if identifier not in self._identifiers:
+            return None
+        return self._identifiers[identifier]
+
     def rename_variable(self, number):
-        return f"lvn.{number}"
+        return base.LVNIdentifier(f"lvn.{number}")
 
     def _encode_to_value(self, instruction):
         operator = instruction.get_operator_string()
+        if operator in ["jmp", "br"]:
+            return None
+        op_type = instruction.get_type()
         operands = instruction.get_arguments()
         encoded_operands = []
         for operand in operands:
             if operator == "const":
-                encoded_operands.append(operand)
+                primitive = base.LVNPrimitive(operand)
+                encoded_operands.append(primitive)
                 continue
 
             # reference entry is None == variable defined outside the
             # basic block (local context)
-            reference_entry = self.get_entry_by_variable(operand)
-            if reference_entry is None:
-                encoded_operands.append(operand)
-            else:
-                encoded_operands.append(reference_entry.number)
+            identifier = base.LVNIdentifier(operand)
+            reference_entry = self.get_entry_by_identifier(identifier)
+            if reference_entry is not None:
+                identifier = reference_entry.number
+            encoded_operands.append(identifier)
 
-        if len(encoded_operands) == 1:
-            return (operator, encoded_operands[0])
-        elif len(encoded_operands) == 2:
-            # the funciton should modify the "encoded_operands" in-place
-            self._handle_commutativity(operator, encoded_operands)
-            return (operator, encoded_operands[0], encoded_operands[1])
+        return base.LVNValue(operator, encoded_operands, op_type)
 
-        print(f"Cannot decode this new type of instruction {instruction}")
-        quit()
-
-    def variable_is_in_table(self, variable):
-        return self.get_entry_by_variable(variable) != None
-
-    def variable_in_table(self, variable):
-        return variable in self._variable_to_entry
+    def identifier_is_in_table(self, identifier):
+        if identifier is None:
+            return False
+        return self.get_entry_by_identifier(identifier) != None
 
     def show_table(self):
-        print("|  #  |   Value    | Variable")
+        print(f"|{'#'.rjust(5)}|{'Value'.rjust(25)}|{'Id'.rjust(15)}|")
+        print("-" * 50)
         for i, entry in enumerate(self._entries):
-            print(f"| {i} | {entry.value}    | {entry.variable}")
+            num = str(i).rjust(5)
+            val = str(entry.value).rjust(25)
+            var = str(entry.variable).rjust(15)
+            print(f"|{num}|{val}|{var}|")
+        print("-" * 50)
 
-    def _handle_commutativity(self, operator, operands):
-        assert len(operands) == 2
-        if operator not in ["add", "mul", "and", "or"]:
-            return
+    def _get_variable(self, instruction):
+        """ Basically, we don't need instruction that has no destination.
+            with one exception: PrintInstruction
+        """
+        variable = instruction.get_destination()
+        if variable is None:
+            operator = instruction.get_operator_string()
+            if operator in ["br", "jmp"]: # blacklist
+                return None
+            elif operator in ["print"]: # whitelist
+                return self.rename_variable(len(self._entries))
+            else:
+                print(f"Unhandled instruction {instruction}")
+                quit()
 
-        # string comes first
-        if isinstance(operands[0], str) and isinstance(operands[1], int):
-            return
-        elif isinstance(operands[1], str) and isinstance(operands[0], int):
-            operands[0], operands[1] = operands[1], operands[0]
-            return
-        elif operands[1] < operands[0]:
-            # handle string comparison and integer comparison
-            operands[0], operands[1] = operands[1], operands[0]
+        return base.LVNIdentifier(variable)
 
-        return
+    def get_referenced_value(self, value):
+        if not value.is_id_instruction():
+            return value
+
+        reference_id = value.get_operands()[0]
+
+        # Since it's a id instruciton, we don't need to check if this is
+        # a primitive value
+        # assert isinstance(reference_id)
+        if not reference_id.is_number():
+            return value
+
+        reference_entry = self.get_entry_by_identifier(reference_id)
+        if not reference_entry.value.is_id_instruction():
+            return value
+        return reference_entry.value
