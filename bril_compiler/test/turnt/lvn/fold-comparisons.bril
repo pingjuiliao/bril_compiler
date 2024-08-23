@@ -1,4 +1,4 @@
-# ARGS: -p lvn
+# ARGS: -p lvn-constant-propagation
 
 @main(arg1: int, arg2: int) {
   a: int = const 4;

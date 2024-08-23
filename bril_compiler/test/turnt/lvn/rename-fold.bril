@@ -1,4 +1,4 @@
-# ARGS: -p lvn-only
+# ARGS: -p lvn-constant-folding
 @main {
   v1: int = const 4;
   v2: int = const 0;

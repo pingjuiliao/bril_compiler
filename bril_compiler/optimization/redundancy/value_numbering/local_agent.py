@@ -31,8 +31,6 @@ class ValueNumberingLocalAgent:
         self._block_imported = True
         instructions = basic_block.get_instructions()
         self._build_table_and_encoding(instructions)
-        # self._lvn_table.show_table()
-
         new_instructions = self._get_reformed_instructions()
         basic_block.transform_into(new_instructions)
 

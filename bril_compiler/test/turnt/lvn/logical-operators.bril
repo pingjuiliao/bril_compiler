@@ -1,4 +1,4 @@
-# ARGS: -p lvn-only
+# ARGS: -p lvn-constant-propagation
 
 @main(arg1: bool, arg2: bool) {
   t: bool = const true;
