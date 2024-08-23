@@ -49,10 +49,11 @@ class NumberingIdentifier(NumberingUse):
         return self._name is not None
 
     def __eq__(self, another):
-        if self.is_number() ^ another.is_number():
+        if not isinstance(another, self.__class__):
             return False
-        return (self._number == another._number or
-                self._name == another._name)
+        if self.is_number():
+            return self._number == another._number
+        return self._name == another._name
 
     def __lt__(self, another):
         if self.is_number() ^ another.is_number():

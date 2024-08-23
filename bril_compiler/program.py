@@ -34,6 +34,8 @@ class Function(object):
     def __init__(self, identifier):
         self._identifier = identifier
         self._basic_blocks = []
+        # tuple (name, type)
+        self.arguments = []
 
     def get_identifier(self):
         return self._identifier
@@ -47,6 +49,8 @@ class Function(object):
     def add_basic_block(self, block):
         self._basic_blocks.append(block)
 
+    def add_argument(self, name, arg_type):
+        self.arguments.append((name, arg_type))
 
 class Module(object):
     def __init__(self):
@@ -63,7 +67,18 @@ class Module(object):
         module_json["functions"] = []
         for function in self._functions:
             function_json = {}
+            # function name
             function_json["name"] = function.get_identifier()
+
+            # function arguments
+            function_json['args'] = []
+            for argument in function.arguments:
+                function_json['args'].append({
+                    'name': argument[0],
+                    'type': argument[1],
+                })
+
+            # function instructions
             function_json["instrs"] = []
             for basic_block in function.get_basic_blocks():
                 # any basic block may contain one label instruction

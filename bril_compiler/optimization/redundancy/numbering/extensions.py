@@ -114,36 +114,52 @@ class ConstantPropagationExtension(NumberingExtension):
             "or": lambda a: a[0] or a[1],
             "xor": lambda a: a[0] ^ a[1],
             "not": lambda a: not a[0],
+            "lt": lambda a: a[0] < a[1],
+            "gt": lambda a: a[0] > a[1],
+            "eq": lambda a: a[0] == a[1],
+            "le": lambda a: a[0] <= a[1],
+            "ge": lambda a: a[0] >= a[1],
         }
 
     def _should_update(self, numbering_value):
         return numbering_value.get_operator() in self.SIMULATIONS
 
     def _presume_result(self, operator, operands):
+        # print(f"presuming {operator} {operands}")
         if operator == "or" and True in operands:
             return True
         elif operator == "and" and False in operands:
             return False
+        elif (operator in ["eq", "le", "ge"] and
+              operands[0] == operands[1]):
+            return True
         return None
 
     def _update_value(self, numbering_value, table):
         arguments = []
         for operand in numbering_value.get_operands():
             if not operand.is_number():
-                arguments.append(None)
+                arguments.append(operand)
                 continue
             referred_entry = table.get_entry_by_identifier(operand)
             referred_value = referred_entry.value
             if referred_value.get_operator() != "const":
-                arguements.append(None)
+                arguements.append(operand)
                 continue
             constant_primitive = referred_value.get_operands()[0]
             arguments.append(constant_primitive.get_value())
 
         operator = numbering_value.get_operator()
-        result = self._presume_result(operator, arguments)
-        if result is None and None in arguments:
-            return numbering_value
+        presumed_result = self._presume_result(operator, arguments)
+        if presumed_result is not None:
+            presumed_result_primitive = base.NumberingPrimitive(presumed_result)
+            return base.NumberingValue(
+                "const", [presumed_result_primitive],
+                numbering_value.get_type())
+
+        for argument in arguments:
+            if isinstance(argument, base.NumberingIdentifier):
+                return numbering_value
 
         result = self.SIMULATIONS[operator](arguments)
         result_primitive = base.NumberingPrimitive(result)
@@ -172,5 +188,5 @@ class IdentityToConstantInstructionExtension(NumberingExtension):
             source_value = referred_entry.value
             if source_value.get_operator() == "const":
                 break
-        print(source_value)
+        # print(source_value)
         return source_value

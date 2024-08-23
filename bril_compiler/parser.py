@@ -45,7 +45,12 @@ class JSonToBrilParser(BrilParser):
         for function_json in data['functions']:
             # function
             function = program.Function(function_json['name'])
-
+            if 'args' in function_json:
+                for function_argument_json in function_json['args']:
+                    function.add_argument(
+                        function_argument_json['name'],
+                        function_argument_json['type']
+                    )
             # parse JSon and generate a list of instructions
             instructions = []
             for instr_json in function_json['instrs']:

@@ -46,7 +46,6 @@ class LocalValueNumberingCompositePass(compiler_pass.BrilCompositePass):
 class NumberingConstantPropagationPass(compiler_pass.BrilPass):
     def __init__(self):
         self._extensions = [
-            extensions.CommutativityExtension(),
             extensions.ConstantPropagationExtension(),
             extensions.IdentityPropagationExtension(),
             extensions.IdentityToConstantInstructionExtension(),
