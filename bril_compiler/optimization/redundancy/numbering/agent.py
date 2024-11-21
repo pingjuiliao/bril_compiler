@@ -16,30 +16,19 @@ class NumberingLocalAgent:
 
     def reform(self, basic_block):
         """main function"""
-        encodings = []
+        new_block = []
         for instruction in basic_block.get_instructions():
             identifier = self._lvn_table.add_entry(instruction)
             if identifier is None:
-                encodings.append(instruction)
-                continue
-
-            encodings.append(identifier)
-
-        self._lvn_table.show_table("tmp_table.txt")
-        # we use another iteration to reconstruct the local block
-        # because variable names can be changed if they are reused.
-        new_block = []
-        for encoding in encodings:
-            if isinstance(encoding, ir.Instruction):
-                new_block.append(encoding)
+                new_block.append(instruction)
                 continue
 
             new_instruction = (self._lvn_table.
-                reconstruct_instruction(encoding)
+                reconstruct_instruction(identifier)
             )
             new_block.append(new_instruction)
 
-
+        self._lvn_table.show_table("./tmp_table.txt")
         # Take action and change the basic block
         basic_block.transform_into(new_block)
 

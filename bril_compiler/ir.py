@@ -35,6 +35,9 @@ class UnaryInstruction(Instruction):
     def get_destination(self):
         return self._destination
 
+    def set_destination(self, name):
+        self._destination = name
+
     def get_arguments(self):
         return [self._operand]
 
@@ -61,6 +64,9 @@ class BinaryInstruction(Instruction):
 
     def get_destination(self):
         return self._destination
+
+    def set_destination(self, name):
+        self._destination = name
 
     def get_arguments(self):
         return [self._operand0, self._operand1]

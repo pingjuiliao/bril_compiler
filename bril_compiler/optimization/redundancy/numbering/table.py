@@ -21,6 +21,13 @@ class NumberingTable:
         self._extensions = numbering_extensions
         self._ir_builder = ir_builder.IRBuilder()
 
+        # In the reconstruction step, we need to change the name
+        # of conflicting use of identifier
+        # e.g.
+        #   a = 4         lvn.0 = 4
+        #   a = 3    ->       a = 3
+        self._identifier_to_rebuilt_ir = {}
+
     def add_entry(self, instruction):
         operator = instruction.get_operator_string()
         if operator in self.IGNORE_OPERATIONS:
@@ -32,16 +39,25 @@ class NumberingTable:
             destination = self.rename_identifier(len(self._entries))
         identifier = base.NumberingIdentifier(destination)
 
+
+        # if there's conflicting use of identifier,
+        #  1) change the table's variable name
+        #  2) change the rebuilt instruciton's destination
         if identifier in self._identifiers:
             conflicting_entry = self._identifiers[identifier]
-            conflicting_identifier = conflicting_entry.variable
             renamed_destination = self.rename_identifier(
                 conflicting_entry.number.get_string()
             )
-            conflicting_identifier.rename_as(renamed_destination)
-            # conflicting_entry.variable = base.NumberingIdentifier(
-            #     renamed_destination)
-            self._identifiers[conflicting_identifier] = conflicting_entry
+            conflicting_entry.variable = base.NumberingIdentifier(
+                renamed_destination
+            )
+
+            # must resolve conflicting ir first
+            conflicting_ir = self._identifier_to_rebuilt_ir[identifier]
+            conflicting_ir.set_destination(renamed_destination)
+            self._identifier_to_rebuilt_ir[conflicting_entry.variable] = conflicting_ir
+
+
         assert isinstance(identifier, base.NumberingIdentifier)
 
         # Get encoded value, if used before, simply add the new identifier
@@ -96,29 +112,47 @@ class NumberingTable:
                 raise ValueError
             uses.append(use_value)
 
+        # when the identifier argument is a number, this is the first time
+        # using this entry, we are allowed to use the entry.variable
         if identifier.is_number():
-            return self._ir_builder.build_by_name(
+            return self._build_ir(
                 numbering_value.get_operator(),
                 uses=uses,
-                destination=entry.variable.get_string(),
-                dest_type=numbering_value.get_type()
+                identifier=entry.variable,
+                dest_type=numbering_value.get_type(),
             )
 
+        # At this point, it's NOT the first time visiting the entry.
+        # We are likely to generate an "id" instruction
+
+
+        # The "id", "const" operations are special. We simply generate
+        # its literal value even it's the second or more times visit
         if numbering_value.get_operator() in ["id", "const"]:
-            return self._ir_builder.build_by_name(
+            return self._build_ir(
                 numbering_value.get_operator(),
                 uses=uses,
-                destination=identifier.get_string(),
+                identifier=identifier,
                 dest_type=numbering_value.get_type()
             )
 
         referred_entry = self.get_entry_by_identifier(identifier)
-        return self._ir_builder.build_by_name(
+        return self._build_ir(
             "id",
             uses=[referred_entry.variable.get_string()],
-            destination=identifier.get_string(),
+            identifier=identifier,
             dest_type=numbering_value.get_type()
         )
+
+    def _build_ir(self, operator_string, uses, identifier, dest_type):
+        new_ir = self._ir_builder.build_by_name(
+            operator_string,
+            uses=uses,
+            destination=identifier.get_string(),
+            dest_type=dest_type,
+        )
+        self._identifier_to_rebuilt_ir[identifier] = new_ir
+        return new_ir
 
     def get_entry_by_value(self, numbering_value):
         if numbering_value not in self._value_to_entry:
